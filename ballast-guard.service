@@ -1,0 +1,12 @@
+[Unit]
+Description=ballast-guard — disk SLO enforcement pass (report/enforce via guard.toml)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/mkdir -p %h/.local/state/ballast
+ExecStart=/home/jsy/.cargo/bin/ballast-guard run --mount / --event-sink %h/.local/state/ballast/guard-events.jsonl
+StandardOutput=journal
+StandardError=journal
+# Succeeds even if the guard exits non-zero (breach detected) — we just log events
+SuccessExitStatus=0 1

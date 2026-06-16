@@ -1,0 +1,11 @@
+[Unit]
+Description=ballast-guard hourly disk SLO check
+Requires=ballast-guard.service
+
+[Timer]
+OnCalendar=*:00
+Persistent=true
+Unit=ballast-guard.service
+
+[Install]
+WantedBy=timers.target

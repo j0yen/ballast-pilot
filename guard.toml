@@ -1,0 +1,19 @@
+# ballast-guard default configuration
+# Shipped by ballast-pilot v0.1.0 — 2026-06-16
+#
+# mode = "report"  → observe-only (no deletion). Safe default.
+# mode = "enforce" → autonomous reaping when high-water is breached.
+#                    Set this explicitly when you are ready to opt in.
+
+mode = "report"
+
+[thresholds]
+high_water = 90   # % — breach triggers reap candidates list (in report mode: events only)
+advisory   = 85   # % — emits a warning event; no action taken
+low_water  = 80   # % — target usage level after a reap pass
+
+[scan]
+roots = ["~/wintermute"]
+
+[safety]
+floor = "fossil"  # never reap below the fossil safety threshold
