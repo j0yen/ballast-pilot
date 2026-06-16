@@ -1,0 +1,9 @@
+[Unit]
+Description=ballast disk SLO guard pass
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/ballast-guard-run.sh
+StandardOutput=journal
+StandardError=journal

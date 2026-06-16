@@ -1,0 +1,8 @@
+# ballast-guard configuration — edit to tune, set mode="enforce" to activate reaping
+mode = "report"           # "report" = dry-run only; "enforce" = autonomous reap
+high_water_pct = 90
+low_water_pct = 80
+advisory_pct = 85
+scan_roots = ["/home/jsy/wintermute"]
+safety_floor = "fossil"   # never reap below this safety class
+event_sink = "/home/jsy/.local/state/ballast/guard-events.jsonl"

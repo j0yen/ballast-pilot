@@ -1,0 +1,11 @@
+[Unit]
+Description=ballast disk SLO guard — hourly cadence
+Requires=ballast-guard.service
+
+[Timer]
+OnCalendar=*:00
+Persistent=true
+Unit=ballast-guard.service
+
+[Install]
+WantedBy=timers.target
