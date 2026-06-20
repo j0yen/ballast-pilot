@@ -1,20 +1,22 @@
 # ballast-pilot
 
-Systemd timer + default config that wires [`ballast-guard`](https://github.com/j0yen/ballast-guard) to run hourly, keeping disk usage within a high/low-water SLO.
+The deployment layer for [`ballast-guard`](https://github.com/j0yen/ballast-guard): a default config plus a systemd user timer that runs the guard once an hour, keeping disk usage inside a high/low-water SLO.
 
-## TL;DR
+## Why it exists
 
-The disk climbed 86% → 92% → 96% over three days while self-review journals printed manual `du` suggestions. ballast-pilot fixes that: it gives `ballast-guard` a config file encoding the vision's water marks and a timer that fires it every hour. The default posture is **report-only** — it observes and logs events but never deletes until you explicitly flip `mode = "enforce"` in `guard.toml`.
+A binary that checks disk usage does nothing until something runs it on a schedule. `ballast-pilot` is that something. It supplies the guard with a config encoding the water marks and a timer that fires it hourly — the difference between a tool you remember to run and a tool that runs itself.
+
+The default posture is deliberately cautious. `mode = "report"` means the guard observes and logs events but never deletes. Autonomous reaping is a single, documented opt-in: flip `mode = "enforce"` in `guard.toml`, and not before.
 
 ## What's included
 
 | File | Purpose |
 |------|---------|
 | `guard.toml` | Default config: high-water 90%, advisory 85%, low-water 80%, scan `~/wintermute`, `mode = "report"` |
-| `ballast-guard.service` | Type=oneshot systemd user service that runs one guard pass |
-| `ballast-guard.timer` | Hourly (`OnCalendar=*:00`), `Persistent=true` so missed windows still fire |
-| `install.sh` | Idempotent install: copies units, writes default config if absent, enables+starts timer |
-| `uninstall.sh` | Disables+removes units; preserves `guard.toml` and event log |
+| `ballast-guard.service` | `Type=oneshot` systemd user service that runs one guard pass |
+| `ballast-guard.timer` | Hourly (`OnCalendar=*:00`), `Persistent=true` so a missed window still fires |
+| `install.sh` | Idempotent install: copies units, writes the default config if absent, enables and starts the timer |
+| `uninstall.sh` | Disables and removes the units; preserves `guard.toml` and the event log |
 
 ## Install
 
@@ -24,21 +26,24 @@ cd ~/wintermute/ballast-pilot
 ./install.sh
 ```
 
+`install.sh` is safe to re-run. It never clobbers an existing tuned `guard.toml` and only reloads the daemon when a unit file actually changed.
+
 Verify:
+
 ```bash
 systemctl --user is-enabled ballast-guard.timer   # → enabled
-systemctl --user list-timers | grep ballast        # shows next fire time
+systemctl --user list-timers | grep ballast        # shows the next fire time
 ```
 
 ## Configuration
 
-Edit `~/.config/ballast/guard.toml` to tune thresholds. The `install.sh` writes a default if absent and never clobbers an existing config.
+The thresholds live in `~/.config/ballast/guard.toml`. `install.sh` writes the default there if none exists and leaves an existing one untouched.
 
-**To enable autonomous reaping**, change `mode = "report"` to `mode = "enforce"` in `~/.config/ballast/guard.toml`. This is the single, documented opt-in switch.
+To enable autonomous reaping, change `mode = "report"` to `mode = "enforce"`. That is the only switch that lets the guard delete anything.
 
 ## Event log
 
-Each guard pass appends JSON lines to `~/.local/state/ballast/guard-events.jsonl` containing the usage percent, SLO band, and exit code.
+Each pass appends a JSON line to `~/.local/state/ballast/guard-events.jsonl` with the usage percent, SLO band, and exit code. This is the same log [`ballast-digest`](https://github.com/j0yen/ballast-digest) reads for its headline and 24-hour reclaimed total.
 
 ## Uninstall
 
@@ -46,9 +51,21 @@ Each guard pass appends JSON lines to `~/.local/state/ballast/guard-events.jsonl
 ./uninstall.sh
 ```
 
-Units are removed; `guard.toml` and the event log are preserved.
+The units are removed; `guard.toml` and the event log are preserved.
 
 ## Depends on
 
-- [`ballast-guard`](https://github.com/j0yen/ballast-guard) binary at `~/.cargo/bin/ballast-guard`
-- systemd user session active (`loginctl enable-linger $USER` if running headless)
+- the [`ballast-guard`](https://github.com/j0yen/ballast-guard) binary at `~/.cargo/bin/ballast-guard`
+- an active systemd user session (`loginctl enable-linger $USER` if the box is headless)
+
+## Part of the ballast fleet
+
+A family of read-mostly disk-health tools for the wintermute workspace. `ballast-pilot` schedules the guard; the others measure and summarize.
+
+| Tool | Job |
+|------|-----|
+| [`ballast-survey`](https://github.com/j0yen/ballast-survey) | Measure what is big right now |
+| [`ballast-trend`](https://github.com/j0yen/ballast-trend) | Measure what is growing and how fast |
+| [`ballast-guard`](https://github.com/j0yen/ballast-guard) | Watch usage against an SLO; log events; reclaim on opt-in |
+| **`ballast-pilot`** | Wire the guard to an hourly systemd timer ← you are here |
+| [`ballast-digest`](https://github.com/j0yen/ballast-digest) | Synthesize survey + trend + events into one ranked block |
